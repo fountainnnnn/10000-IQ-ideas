@@ -2,7 +2,7 @@
 
 **Building things that EVERYONE needs.**
 
-A daily series. Each day I ship one essential project that the world has been missing. Every project lives in its own folder here, so you can start using it today.
+Every so often I ship another essential project that the world has been missing. Every project lives in its own folder here, so you can start using it today.
 
 ## The projects
 

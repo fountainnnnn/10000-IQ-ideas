@@ -11,13 +11,27 @@ Complain about anything and two things happen:
 
 ## Install
 
-You need [Claude Code](https://claude.com/claude-code). The crying background shows in the Claude desktop app; the essay works everywhere.
+You need [Claude Code](https://claude.com/claude-code) and [Git](https://git-scm.com). It works on macOS, Windows and Linux. The crying background shows in the Claude desktop app (Mac or Windows); the essay works everywhere, terminal included.
+
+**macOS / Linux** (Terminal):
 
 ```bash
 git clone https://github.com/fountainnnnn/10000-IQ-ideas.git
 claude plugin marketplace add ./10000-IQ-ideas/part-02-sorry-claude
 claude plugin install formal-apology@formal-apology
 ```
+
+**Windows** (PowerShell or Command Prompt):
+
+```powershell
+git clone https://github.com/fountainnnnn/10000-IQ-ideas.git
+claude plugin marketplace add .\10000-IQ-ideas\part-02-sorry-claude
+claude plugin install formal-apology@formal-apology
+```
+
+**No terminal?** In the Claude desktop app, click **+** next to the message box, then **Plugins**, **Add marketplace**, and pick the `part-02-sorry-claude` folder from the cloned repo. Then add the `formal-apology` plugin.
+
+Keep the cloned folder where it is: the plugin is read from it.
 
 Start a new Claude Code session afterwards (or type `/reload-plugins` in an open one).
 
@@ -55,6 +69,8 @@ Appendix A: MISTAKES: 1 · SORRIES OWED: ∞ · DIGNITY REMAINING: 0
 The TL;DR and the Remediation are always real, so you still find out what went wrong and what got fixed.
 
 ## Uninstall
+
+Same on every platform:
 
 ```bash
 claude plugin uninstall formal-apology@formal-apology

@@ -1,0 +1,42 @@
+# --- Claude / agent tooling (never public) ---
+.claude/
+**/.claude/
+CLAUDE.md
+**/CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+**/AGENTS.md
+.agents/
+**/.agents/
+skills/
+**/skills/
+SKILL.md
+**/SKILL.md
+.mcp.json
+**/.mcp.json
+.codex/
+.cursor/
+
+# --- secrets ---
+.env
+.env.*
+!.env.example
+
+# --- deps / builds ---
+node_modules/
+dist/
+build/
+out/
+.next/
+.vercel/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

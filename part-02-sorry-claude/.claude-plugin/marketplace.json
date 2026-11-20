@@ -1,0 +1,5 @@
+{
+  "name": "formal-apology",
+  "owner": { "name": "10000 IQ Ideas" },
+  "plugins": [{ "name": "formal-apology", "source": "./" }]
+}

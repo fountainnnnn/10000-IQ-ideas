@@ -1,0 +1,1 @@
+{ "name": "formal-apology", "version": "1.0.0", "description": "When you complain, Claude apologizes with a full formal essay and the app background turns into Claude crying in the rain", "types": "./types/index.d.ts" }

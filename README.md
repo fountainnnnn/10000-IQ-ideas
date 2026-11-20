@@ -9,6 +9,7 @@ Every so often I ship another essential project that the world has been missing.
 | Part | Project | What it does |
 | --- | --- | --- |
 | 01 | [Token Incinerator](part-01-token-incinerator/) | Chops whatever you type into tokens and feeds them to a smug furnace named Gerald. You get a receipt. |
+| 02 | [Sorry Claude](part-02-sorry-claude/) | A Claude Code plugin. Complain and Claude weeps in the rain behind your chat, then writes you a formal apology essay in eleven parts. |
 
 ## Running a project
 

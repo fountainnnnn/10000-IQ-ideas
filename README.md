@@ -1,8 +1,8 @@
 # 10000 IQ Ideas
 
-**Wasting my tokens building things no one needs.**
+**Building things that EVERYONE needs.**
 
-A daily Instagram series. Each day I build something useless with AI. Every project lives in its own folder here, so you can run it yourself.
+A daily series. Each day I ship one essential project that the world has been missing. Every project lives in its own folder here, so you can start using it today.
 
 ## The projects
 
@@ -22,4 +22,4 @@ day-02-<slug>/
 ...
 ```
 
-Free to use, fork, or ignore. You don't need any of this, and that's the point.
+Free to use and fork. You're welcome.

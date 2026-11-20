@@ -8,7 +8,7 @@ Every so often I ship another essential project that the world has been missing.
 
 | Day | Project | What it does |
 | --- | --- | --- |
-| _soon_ | | |
+| 01 | [Token Incinerator](day-01-token-incinerator/) | Chops whatever you type into tokens and feeds them to a smug furnace named Gerald. You get a receipt. |
 
 ## Running a project
 

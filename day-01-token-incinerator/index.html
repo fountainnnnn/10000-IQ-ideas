@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Incinerator</title>
+<meta name="description" content="Type anything. Gerald the furnace eats it, one token at a time. Nothing useful happens.">
+<link rel="icon" href="assets/furnace-idle.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fbf4ea;
+    --panel: #ffffff;
+    --line: #ead9c6;
+    --line-strong: #d6bfa5;
+    --ink: #2a1a12;
+    --muted: #5b4739;
+    --dim: #8a7464;
+    --fire: #f26a12;
+    --fire-text: #c2410c;
+    --fire-deep: #7c2d12;
+    --paper: #fffaf1;
+    --paper-ink: #2b1d16;
+    --pixel: "Pixelify Sans", ui-monospace, monospace;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    overflow-x: hidden;
+    color: var(--ink);
+    font-family: var(--mono);
+    background:
+      radial-gradient(900px 600px at 30% 45%, #ffe3c4 0%, rgba(251, 244, 234, 0) 70%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 16px 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ---------- header ---------- */
+  header { text-align: center; }
+  h1 {
+    margin: 0;
+    font-family: var(--pixel);
+    font-weight: 700;
+    font-size: clamp(42px, 9vw, 76px);
+    line-height: .95;
+    color: var(--fire);
+    text-shadow: 0 3px 0 var(--fire-text), 0 6px 0 var(--fire-deep);
+  }
+  .sub {
+    max-width: 48ch;
+    margin: 16px auto 0;
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  /* ---------- furnace stage ---------- */
+  .stage {
+    position: relative;
+    height: clamp(220px, 36vh, 330px);
+    display: grid;
+    place-items: center;
+  }
+  .glow {
+    position: absolute;
+    left: 50%;
+    top: 60%;
+    width: min(560px, 96vw);
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%) scale(var(--gs, 1));
+    background: radial-gradient(closest-side, rgba(255, 150, 60, .55), rgba(255, 120, 40, .16) 55%, transparent 76%);
+    opacity: var(--go, .45);
+    pointer-events: none;
+  }
+  .floor {
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: min(300px, 70vw);
+    height: 22px;
+    transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgba(90, 50, 30, .3), transparent);
+  }
+  .furnace {
+    position: relative;
+    height: 100%;
+    aspect-ratio: 520 / 490;
+    translate: -9% 0; /* sprite has spare room on the left for the open door */
+    cursor: pointer;
+    animation: bob 3.2s ease-in-out infinite;
+    transform-origin: 50% 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .furnace .body { position: absolute; inset: 0; transform-origin: 59% 100%; }
+  .furnace img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+  .furnace img.on { opacity: 1; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    50% { transform: translateY(-5px) scale(1.012, .988); }
+  }
+
+  .bubble {
+    position: absolute;
+    left: 80%;
+    top: 2%;
+    width: max-content;
+    max-width: 240px;
+    padding: 10px 14px 11px;
+    font-family: var(--pixel);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1.25;
+    color: var(--paper-ink);
+    background: #fff;
+    border: 3px solid var(--paper-ink);
+    border-radius: 6px;
+    box-shadow: 4px 4px 0 rgba(42, 26, 18, .22);
+    transform-origin: 0 100%;
+    transform: scale(.6);
+    opacity: 0;
+    transition: transform .18s cubic-bezier(.3, 1.6, .5, 1), opacity .12s;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: -12px;
+    bottom: 10px;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-left: 3px solid var(--paper-ink);
+    border-bottom: 3px solid var(--paper-ink);
+    transform: skewY(-35deg);
+  }
+  .bubble.show { transform: scale(1); opacity: 1; }
+
+  /* ---------- feeder panel ---------- */
+  .panel {
+    padding: 18px;
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 18px 40px rgba(120, 70, 30, .12);
+  }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip {
+    padding: 7px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    background: #fff4e8;
+    border: 1.5px solid #ebcfb1;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .15s;
+  }
+  .chip:hover { border-color: var(--fire); background: #ffe9d4; transform: translateY(-1px); }
+  .chip:focus-visible, .btn:focus-visible, .snd:focus-visible, .dl:focus-visible, textarea:focus-visible {
+    outline: 3px solid rgba(242, 106, 18, .45);
+    outline-offset: 2px;
+  }
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 100px;
+    padding: 12px 14px;
+    resize: vertical;
+    font: 16px/1.55 var(--mono);
+    color: var(--ink);
+    background: #fffaf3;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 10px;
+  }
+  textarea::placeholder { color: var(--dim); }
+
+  .tokens {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 5px;
+    min-height: 40px;
+    max-height: 176px;
+    overflow: auto;
+    margin-top: 12px;
+    padding: 2px;
+  }
+  .empty { align-self: center; font-size: 14px; color: var(--dim); }
+  .tk {
+    display: inline-block;
+    padding: 6px 7px;
+    font: 500 14px/1 var(--mono);
+    white-space: pre;
+    color: hsl(var(--h) 70% 25%);
+    background: hsl(var(--h) 90% 91%);
+    border: 1px solid hsl(var(--h) 60% 70%);
+    border-radius: 5px;
+  }
+  .tk.more { --h: 20; font-weight: 600; }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 16px; }
+  .btn { cursor: pointer; border: 0; }
+  .btn-burn {
+    padding: 12px 30px 13px;
+    font-family: var(--pixel);
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: .04em;
+    color: #3a1204;
+    background: linear-gradient(#ffb04a, #ff6a1f);
+    border: 3px solid #3a1204;
+    border-radius: 12px;
+    box-shadow: 0 5px 0 var(--fire-deep), 0 12px 26px rgba(242, 106, 18, .3);
+    transition: transform .08s, box-shadow .08s, filter .15s;
+  }
+  .btn-burn:hover { filter: brightness(1.05) saturate(1.1); }
+  .btn-burn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--fire-deep), 0 6px 14px rgba(242, 106, 18, .25); }
+  .btn-ghost {
+    padding: 11px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    border: 1.5px dashed #c9ab8c;
+    border-radius: 10px;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .btn-ghost:hover { color: var(--fire-text); border-color: var(--fire); background: #fff4e8; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.3); }
+
+  /* ---------- stats ---------- */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat {
+    padding: 14px 8px 13px;
+    text-align: center;
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 14px;
+  }
+  .num {
+    display: block;
+    font-family: var(--pixel);
+    font-weight: 700;
+    font-size: clamp(21px, 4.8vw, 34px);
+    line-height: 1.1;
+    color: var(--fire-text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .lab {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .nope { animation: nope .5s; }
+  @keyframes nope {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+
+  footer { text-align: center; font-size: 13px; line-height: 1.7; color: var(--muted); }
+  footer p { margin: 0; }
+
+  .snd {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 70;
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    background: rgba(255, 255, 255, .9);
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  /* ---------- flying tokens + fx ---------- */
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 40; pointer-events: none; }
+  #layer { position: fixed; inset: 0; z-index: 50; pointer-events: none; }
+  .fly {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+    transition: background .25s, color .25s, border-color .25s, box-shadow .25s;
+  }
+  .ptk { white-space: pre; display: inline-block; }
+  .fly.hot.tk { color: #fff; background: var(--fire); border-color: var(--fire-text); box-shadow: 0 0 14px rgba(242, 106, 18, .7); }
+  .fly.hot.ptk { color: var(--fire) !important; text-shadow: 0 0 10px rgba(255, 140, 40, .8) !important; }
+  .burnt { visibility: hidden; }
+
+  /* ---------- receipt ---------- */
+  .receipt {
+    position: fixed;
+    right: 22px;
+    bottom: 28px;
+    z-index: 60;
+    width: 290px;
+    padding: 18px 18px 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--paper-ink);
+    background: var(--paper);
+    border-radius: 3px 3px 0 0;
+    box-shadow: 0 18px 40px rgba(90, 50, 20, .25), 0 0 0 1px rgba(90, 50, 20, .08);
+    transform: translateY(160%) rotate(-2.5deg);
+    transition: transform .45s cubic-bezier(.2, 1.3, .4, 1);
+  }
+  .receipt::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -7px;
+    height: 7px;
+    background: radial-gradient(circle at 6px 0, var(--paper) 6px, transparent 6.5px) 0 0 / 12px 7px repeat-x;
+  }
+  .receipt.show { transform: translateY(0) rotate(-2.5deg); }
+  .receipt h2 {
+    margin: 0;
+    font-family: var(--pixel);
+    font-size: 19px;
+    text-align: center;
+    letter-spacing: .04em;
+  }
+  .receipt .small { text-align: center; color: #6b5545; font-size: 12px; }
+  .receipt hr { border: 0; border-top: 1px dashed #b9a48f; margin: 9px 0; }
+  .receipt .row { display: flex; justify-content: space-between; gap: 10px; }
+  .receipt .row span:last-child { font-weight: 600; text-align: right; }
+  .receipt .thanks { text-align: center; font-weight: 600; letter-spacing: .06em; font-size: 12px; }
+  .receipt .x {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    color: #6b5545;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .dl {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 9px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--paper);
+    background: var(--paper-ink);
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .dl:hover { background: #4a3226; }
+
+  @media (min-width: 1000px) {
+    .wrap {
+      max-width: 1160px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-areas: "head head" "stage panel" "stage stats" "foot foot";
+      column-gap: 36px;
+      row-gap: 16px;
+      align-items: start;
+      align-content: center;
+      min-height: 100vh;
+    }
+    header { grid-area: head; margin-bottom: 8px; }
+    .stage { grid-area: stage; align-self: center; height: clamp(320px, 50vh, 440px); }
+    .panel { grid-area: panel; }
+    .stats { grid-area: stats; }
+    footer { grid-area: foot; margin-top: 4px; }
+    .bubble { max-width: 190px; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding-top: 56px; gap: 14px; }
+    .snd { position: absolute; }
+    .bubble { left: 50%; top: -10%; transform-origin: 50% 100%; translate: -50% 0; max-width: 270px; text-align: center; }
+    .bubble::after { left: 50%; bottom: -12px; transform: translateX(-50%) rotate(-45deg); border-bottom: 3px solid var(--paper-ink); }
+    .stage { margin-top: 26px; }
+    .receipt { left: 50%; right: auto; bottom: 18px; width: min(300px, calc(100vw - 32px)); translate: -50% 0; }
+    .meta .hint { display: none; }
+    .btn-burn { flex: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .furnace { animation: none; }
+  }
+</style>
+</head>
+<body>
+<button class="snd" id="snd" type="button" aria-pressed="true">sound: on</button>
+<canvas id="fx" aria-hidden="true"></canvas>
+<div id="layer" aria-hidden="true"></div>
+
+<main class="wrap">
+  <header>
+    <h1 data-burn>Token Incinerator</h1>
+    <p class="sub" data-burn>Type anything. It gets chopped into tokens and fed to Gerald, a furnace. Nothing useful happens.</p>
+  </header>
+
+  <section class="stage" aria-label="Gerald the furnace">
+    <div class="glow" id="glow"></div>
+    <div class="floor"></div>
+    <div class="furnace" id="furnace" role="button" tabindex="0" aria-label="Poke Gerald">
+      <div class="body" id="body">
+        <img class="on" data-mood="idle" src="assets/furnace-idle.png" alt="Gerald, a smug cast-iron furnace">
+        <img data-mood="eat" src="assets/furnace-eat.png" alt="">
+        <img data-mood="happy" src="assets/furnace-happy.png" alt="">
+      </div>
+      <div class="bubble" id="bubble" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Feed the furnace">
+    <div class="presets" id="presets">
+      <button class="chip" type="button" data-preset="pitch" data-burn>Startup pitch</button>
+      <button class="chip" type="button" data-preset="terms" data-burn>Terms &amp; conditions</button>
+      <button class="chip" type="button" data-preset="text" data-burn>Text I'll never send</button>
+      <button class="chip" type="button" data-preset="linkedin" data-burn>LinkedIn post</button>
+      <button class="chip" type="button" data-preset="lorem" data-burn>Lorem ipsum</button>
+    </div>
+    <textarea id="input" spellcheck="false" aria-label="Text to incinerate" placeholder="Paste your thesis, your feelings, your entire inbox…"></textarea>
+    <div class="tokens" id="tokens" aria-hidden="true"></div>
+    <div class="meta">
+      <span><b id="count">0</b> tokens · <b id="cost">$0.00</b> to destroy</span>
+      <span class="hint" id="hint" data-burn>⌘ + Enter to burn</span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-burn" id="burn" type="button"><span data-burn>BURN IT</span></button>
+      <button class="btn btn-ghost" id="burnPage" type="button"><span data-burn>burn this entire webpage</span></button>
+    </div>
+  </section>
+
+  <section class="stats" aria-label="Lifetime stats">
+    <div class="stat"><span class="num" id="stTokens">0</span><span class="lab" data-burn>Tokens burned</span></div>
+    <div class="stat"><span class="num" id="stMoney">$0.00</span><span class="lab" data-burn>Money wasted</span></div>
+    <div class="stat"><span class="num" id="stDone">0</span><span class="lab" data-burn>Things accomplished</span></div>
+  </section>
+
+  <footer>
+    <p data-burn>Priced at $15 per million tokens, our premium waste tier.</p>
+    <p data-burn>Tokenizer is vibes-based and roughly GPT-shaped. All tokens were harmed.</p>
+  </footer>
+</main>
+
+<aside class="receipt" id="receipt" aria-live="polite">
+  <button class="x" id="rcClose" type="button" aria-label="Close receipt">×</button>
+  <h2>INCINERATION RECEIPT</h2>
+  <div class="small"><span id="rcNo">#000001</span> · <span id="rcDate"></span></div>
+  <hr>
+  <div class="row"><span>tokens burned</span><span id="rcTokens">0</span></div>
+  <div class="row"><span>cost</span><span id="rcCost">$0.00</span></div>
+  <div class="row"><span>value created</span><span>$0.00</span></div>
+  <div class="row"><span>heat generated</span><span id="rcHeat">a little</span></div>
+  <div class="row"><span>refunds</span><span>lol</span></div>
+  <hr>
+  <div class="thanks">THANK YOU FOR WASTING WITH US</div>
+  <button class="dl" id="rcDownload" type="button">Download receipt ↓</button>
+</aside>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const RATE = 15 / 1e6;
+  const MAX_PILLS = 500;
+  const HUES = [28, 48, 340, 190, 140, 265];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+
+  const PRESETS = {
+    pitch: "We're building an AI-powered, blockchain-native, synergy-first platform that disrupts the way people disrupt things. Think Uber, but for vibes. We're pre-revenue, pre-product and, frankly, pre-idea, but the deck is incredible and the founders have great energy.",
+    terms: 'By continuing to exist near this website, you ("the User") agree to surrender all rights, lefts and moderately angled directions to the Furnace ("Gerald"). Tokens, once incinerated, cannot be un-incinerated, refunded or apologized to. Gerald reserves the right to be warm at any time without notice. This agreement is governed by the laws of thermodynamics.',
+    text: "hey. i know it's been a while. i just wanted to say i still have your hoodie and i think about giving it back every single day.\n\ni won't. but i think about it.",
+    linkedin: "I'm humbled and honored to announce that I burned 3,000 tokens today. 🔥\n\nHere's what it taught me about leadership:\n\n1. Nothing.\n\nAgree? 👇 #grateful #incineration #thoughtleadership",
+    lorem: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
+  };
+
+  const LINES = {
+    hello: ["hi. I'm Gerald. I eat words.", 'feed me. I am a furnace.'],
+    hungry: ["I can't burn nothing. I've tried.", 'feed me words. any words.', 'the box is empty. like my purpose.'],
+    small: ['that was an appetizer.', 'a crumb. barely a snack.', "I've eaten bigger tweets."],
+    medium: ['mmm. adjectives.', 'tasted like a pitch deck.', 'your words are warm now.', 'zero value created. perfect.', '40% filler. delicious.'],
+    large: ['I am SO full of content.', 'I could have summarized that. I chose fire.', "that was a whole quarter's OKRs.", '*burp* …pardon. that was a novel.'],
+    poke: ["please don't touch the furnace.", "I'm hot. like, literally.", 'ow. I mean, warm.', 'I accept text, not pats.'],
+    idle: ["it's getting cold in here.", 'psst. type something.', "I haven't eaten in seconds.", 'any adjectives? I love adjectives.'],
+  };
+
+  // ---------- tokenizer (vibes-based) ----------
+  const RE = / ?\p{L}+| ?\p{N}{1,3}| ?[^\s\p{L}\p{N}]+|\s+/gu;
+  function tokenize(text) {
+    const out = [];
+    for (const m of text.matchAll(RE)) {
+      const t = m[0];
+      const lead = t.length > 1 && t[0] === ' ' ? ' ' : '';
+      const core = lead ? t.slice(1) : t;
+      if (core.length > 7 && /^\p{L}+$/u.test(core)) {
+        const parts = [];
+        for (let i = 0; i < core.length; i += 4) parts.push(core.slice(i, i + 4));
+        if (parts[parts.length - 1].length < 3) { const tail = parts.pop(); parts[parts.length - 1] += tail; }
+        parts[0] = lead + parts[0];
+        out.push(...parts);
+      } else out.push(t);
+    }
+    return out;
+  }
+  const show = (t) => (/^\s+$/.test(t) ? t.replace(/\n/g, '↵').replace(/ /g, '·').replace(/\t/g, '→') : t);
+  const money = (v) => (v === 0 ? '$0.00' : '$' + v.toFixed(v < 0.01 ? 6 : 4));
+
+  // ---------- elements ----------
+  const input = $('#input'), preview = $('#tokens'), countEl = $('#count'), costEl = $('#cost');
+  const furnace = $('#furnace'), body = $('#body'), bubble = $('#bubble'), glow = $('#glow');
+  const layer = $('#layer'), canvas = $('#fx'), g = canvas.getContext('2d');
+  const burnBtn = $('#burn'), pageBtn = $('#burnPage'), sndBtn = $('#snd');
+  const stTokens = $('#stTokens'), stMoney = $('#stMoney'), stDone = $('#stDone');
+  const receipt = $('#receipt');
+  const imgs = [...body.querySelectorAll('img')];
+
+  if (!/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)) $('#hint').textContent = 'Ctrl + Enter to burn';
+
+  const totals = store.get('ti-totals', { tokens: 0, burns: 0 });
+  let busy = false, burn = null, heat = 0, statsDirty = true;
+  const fliers = [], parts = [];
+
+  // ---------- sound (synthesized, no files) ----------
+  const sfx = (() => {
+    let ac = null, noise = null, on = store.get('ti-sound', true), lastCrackle = 0;
+    function ctx() {
+      if (!on) return null;
+      if (!ac) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ac = new AC();
+        noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        const d = noise.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      if (ac.state === 'suspended') ac.resume();
+      return ac;
+    }
+    function hiss({ dur, f0, f1, q = 1, gain, type = 'bandpass' }) {
+      const c = ctx(); if (!c) return;
+      const t = c.currentTime, src = c.createBufferSource(), f = c.createBiquadFilter(), gn = c.createGain();
+      src.buffer = noise;
+      f.type = type; f.Q.value = q;
+      f.frequency.setValueAtTime(f0, t);
+      f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      gn.gain.setValueAtTime(0.0001, t);
+      gn.gain.exponentialRampToValueAtTime(gain, t + Math.min(0.03, dur / 4));
+      gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(f).connect(gn).connect(c.destination);
+      src.start(t, Math.random() * 0.5);
+      src.stop(t + dur + 0.05);
+    }
+    return {
+      get on() { return on; },
+      toggle() { on = !on; store.set('ti-sound', on); return on; },
+      crackle() {
+        const n = performance.now(); if (n - lastCrackle < 45) return; lastCrackle = n;
+        const f = rand(1100, 3600);
+        hiss({ dur: rand(0.04, 0.09), f0: f, f1: f * 0.7, q: 2, gain: 0.12 });
+      },
+      whoosh() { hiss({ dur: 0.8, f0: 160, f1: 1900, q: 0.7, gain: 0.28, type: 'lowpass' }); },
+      burp() {
+        const c = ctx(); if (!c) return;
+        const t = c.currentTime, o = c.createOscillator(), gn = c.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(150, t);
+        o.frequency.exponentialRampToValueAtTime(65, t + 0.24);
+        gn.gain.setValueAtTime(0.0001, t);
+        gn.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+        o.connect(gn).connect(c.destination);
+        o.start(t); o.stop(t + 0.3);
+      },
+    };
+  })();
+  function renderSnd() { sndBtn.textContent = 'sound: ' + (sfx.on ? 'on' : 'off'); sndBtn.setAttribute('aria-pressed', sfx.on); }
+  sndBtn.addEventListener('click', () => { sfx.toggle(); renderSnd(); });
+  renderSnd();
+
+  // ---------- gerald ----------
+  let moodT = 0, bubbleT = 0, lastGulp = 0;
+  function setMood(m) { imgs.forEach((im) => im.classList.toggle('on', im.dataset.mood === m)); }
+  function say(text, ms = 2600) {
+    bubble.textContent = text;
+    bubble.classList.add('show');
+    clearTimeout(bubbleT);
+    bubbleT = setTimeout(() => bubble.classList.remove('show'), ms);
+  }
+  function gulp(amount = 0.06) {
+    const n = performance.now(); if (n - lastGulp < 90) return; lastGulp = n;
+    body.animate(
+      [{ transform: 'scale(1,1)' }, { transform: `scale(${1 + amount},${1 - amount})` }, { transform: 'scale(1,1)' }],
+      { duration: 170, easing: 'ease-out' }
+    );
+  }
+  function mouth() {
+    const r = furnace.getBoundingClientRect();
+    return { x: r.left + r.width * 0.59, y: r.top + r.height * 0.66, w: r.width };
+  }
+  function poke() {
+    if (busy) return;
+    setMood('eat'); gulp(0.08); sfx.crackle();
+    say(pick(LINES.poke), 2000);
+    clearTimeout(moodT); moodT = setTimeout(() => setMood('idle'), 380);
+  }
+  furnace.addEventListener('click', poke);
+  furnace.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); poke(); } });
+
+  // ---------- preview ----------
+  function pill(text, i) {
+    const s = document.createElement('span');
+    s.className = 'tk';
+    s.textContent = show(text);
+    s.style.setProperty('--h', HUES[i % HUES.length]);
+    return s;
+  }
+  function renderPreview() {
+    const toks = tokenize(input.value);
+    preview.textContent = '';
+    if (!toks.length) {
+      const e = document.createElement('span');
+      e.className = 'empty';
+      e.textContent = 'tokens show up here. they look nervous.';
+      preview.append(e);
+    } else {
+      const frag = document.createDocumentFragment();
+      toks.slice(0, MAX_PILLS).forEach((t, i) => frag.append(pill(t, i)));
+      if (toks.length > MAX_PILLS) {
+        const rest = toks.length - MAX_PILLS;
+        const p = pill(`+${rest.toLocaleString()} more`, 0);
+        p.classList.add('more');
+        p.dataset.weight = rest;
+        frag.append(p);
+      }
+      preview.append(frag);
+    }
+    countEl.textContent = toks.length.toLocaleString();
+    costEl.textContent = money(toks.length * RATE);
+  }
+  input.addEventListener('input', renderPreview);
+  input.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); burnInput(); } });
+  $('#presets').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-preset]');
+    if (!b || busy) return;
+    input.value = PRESETS[b.dataset.preset];
+    renderPreview();
+  });
+
+  // ---------- launching tokens ----------
+  function setBusy(b) {
+    busy = b;
+    burnBtn.disabled = b; pageBtn.disabled = b;
+  }
+  function launch(items, ctx) {
+    setBusy(true);
+    burn = { total: items.reduce((s, it) => s + it.weight, 0), ctx };
+    setMood('eat'); sfx.whoosh(); say('OM NOM', 900);
+    receipt.classList.remove('show');
+    const fr = furnace.getBoundingClientRect();
+    if (fr.top < 0 || fr.bottom > innerHeight) furnace.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    items.forEach((it) => { it.node.classList.add('fly'); layer.append(it.node); });
+    const now = performance.now() + 120;
+    const stagger = reduced ? 4 : Math.min(55, 3600 / Math.max(items.length, 1));
+    items.forEach((it, i) => {
+      const w = it.node.offsetWidth, h = it.node.offsetHeight;
+      it.node.style.transform = `translate(${it.x - w / 2}px,${it.y - h / 2}px)`;
+      if (it.hidden) it.node.style.opacity = '0';
+      fliers.push({
+        el: it.node, w, h, sx: it.x, sy: it.y, weight: it.weight, hot: false, hidden: !!it.hidden,
+        t0: now + i * stagger + rand(0, stagger),
+        dur: reduced ? 320 : rand(650, 1100),
+        rot: rand(-300, 300), bend: rand(-160, 160), lift: rand(70, 190),
+      });
+    });
+  }
+
+  function burnInput() {
+    if (busy) return;
+    const pills = [...preview.querySelectorAll('.tk')];
+    if (!pills.length) { say(pick(LINES.hungry)); gulp(0.04); return; }
+    const pr = preview.getBoundingClientRect();
+    const items = pills.map((p) => {
+      const r = p.getBoundingClientRect();
+      const cy = r.top + r.height / 2;
+      return {
+        node: p.cloneNode(true),
+        x: r.left + r.width / 2,
+        y: clamp(cy, pr.top + 10, pr.bottom - 10),
+        // pills scrolled out of the preview box pop in at the edge when their turn comes
+        hidden: cy < pr.top || cy > pr.bottom,
+        weight: +(p.dataset.weight || 1),
+      };
+    });
+    preview.style.minHeight = preview.offsetHeight + 'px'; // keep the page from jumping mid-burn
+    input.value = '';
+    renderPreview();
+    launch(items, { kind: 'input' });
+  }
+  burnBtn.addEventListener('click', burnInput);
+
+  function burnPage() {
+    if (busy) return;
+    const els = [...document.querySelectorAll('[data-burn]')].filter((el) => el.getClientRects().length);
+    const items = [];
+    for (const el of els) {
+      const text = el.textContent;
+      if (!text.trim()) continue;
+      const html = el.innerHTML, cs = getComputedStyle(el);
+      el.textContent = '';
+      const spans = tokenize(text).map((t) => { const s = document.createElement('span'); s.textContent = t; el.append(s); return s; });
+      for (const s of spans) {
+        const word = s.textContent.trim();
+        if (!word) continue;
+        const r = s.getBoundingClientRect();
+        if (!r.width) continue;
+        const f = document.createElement('span');
+        f.className = 'ptk';
+        f.textContent = word;
+        Object.assign(f.style, {
+          font: cs.font, color: cs.color, letterSpacing: cs.letterSpacing,
+          textShadow: cs.textShadow, textTransform: cs.textTransform,
+        });
+        items.push({ node: f, x: r.left + r.width / 2, y: r.top + r.height / 2, weight: 1 });
+      }
+      el.innerHTML = html;
+      el.classList.add('burnt');
+    }
+    const m = mouth();
+    items.sort((a, b) => Math.hypot(a.x - m.x, a.y - m.y) - Math.hypot(b.x - m.x, b.y - m.y));
+    launch(items, { kind: 'page', els });
+  }
+  pageBtn.addEventListener('click', burnPage);
+
+  function eat(f, m) {
+    totals.tokens += f.weight;
+    burn.eaten = (burn.eaten || 0) + f.weight;
+    heat = Math.min(1, heat + 0.07);
+    spawn(m, 3 + Math.round(Math.random() * 3), 1.3);
+    gulp(); sfx.crackle();
+    statsDirty = true;
+    if (!fliers.length) finish();
+  }
+
+  function finish() {
+    const { total, ctx } = burn;
+    totals.burns += 1;
+    store.set('ti-totals', totals);
+    stDone.classList.remove('nope'); void stDone.offsetWidth; stDone.classList.add('nope');
+    if (ctx.kind === 'page') return finishPage(ctx.els, total);
+    setTimeout(() => {
+      setMood('happy'); sfx.burp(); gulp(0.1);
+      say(pick(total < 15 ? LINES.small : total > 300 ? LINES.large : LINES.medium), 3200);
+      showReceipt(total);
+    }, 250);
+    setTimeout(() => { setMood('idle'); setBusy(false); preview.style.minHeight = ''; }, 2800);
+  }
+
+  function finishPage(els, total) {
+    setTimeout(() => { setMood('happy'); sfx.burp(); say('…okay, that one was load-bearing.', 2400); }, 300);
+    setTimeout(() => { setMood('idle'); say('rebuilding the website from memory…', 2200); }, 2700);
+    setTimeout(() => {
+      els.forEach((el, i) => {
+        el.classList.remove('burnt');
+        el.animate(
+          [{ opacity: 0, filter: 'blur(8px)', transform: 'translateY(6px)' }, { opacity: 1, filter: 'blur(0)', transform: 'none' }],
+          { duration: 520, delay: i * 70, easing: 'ease-out', fill: 'backwards' }
+        );
+      });
+    }, 3300);
+    setTimeout(() => { say(`nailed it. (${total} tokens, gone forever)`, 2600); showReceipt(total); setBusy(false); }, 3300 + els.length * 70 + 600);
+  }
+
+  // ---------- receipt ----------
+  // The receipt stays up until it's closed or the next burn starts, so there's time to save it.
+  let lastReceipt = null;
+  function showReceipt(t) {
+    const r = {
+      no: '#' + String(totals.burns).padStart(6, '0'),
+      date: new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }),
+      tokens: t.toLocaleString(),
+      cost: money(t * RATE),
+      heat: t < 40 ? 'a little' : t < 300 ? 'some' : 'a concerning amount',
+    };
+    lastReceipt = r;
+    $('#rcNo').textContent = r.no;
+    $('#rcDate').textContent = r.date;
+    $('#rcTokens').textContent = r.tokens;
+    $('#rcCost').textContent = r.cost;
+    $('#rcHeat').textContent = r.heat;
+    $('#rcDownload').textContent = 'Download receipt ↓';
+    receipt.classList.add('show');
+  }
+  $('#rcClose').addEventListener('click', () => receipt.classList.remove('show'));
+
+  // Draws the receipt onto a canvas (2x) so it can be saved as a PNG.
+  function paintReceipt(x, r, sprite, W, H) {
+    const L = 48, R = W - 48, top = 16;
+    if (H) {
+      x.fillStyle = '#fbf4ea';
+      x.fillRect(0, 0, W, H);
+      const bottom = H - 24;
+      x.save();
+      x.shadowColor = 'rgba(90, 50, 20, .2)'; x.shadowBlur = 20; x.shadowOffsetY = 6;
+      x.beginPath();
+      x.moveTo(20, top); x.lineTo(W - 20, top); x.lineTo(W - 20, bottom);
+      for (let px = W - 20; px > 20; px -= 12) x.arc(px - 6, bottom, 6, 0, Math.PI, false);
+      x.closePath();
+      x.fillStyle = '#fffaf1'; x.fill();
+      x.restore();
+    }
+    const dashed = (y) => {
+      x.save(); x.setLineDash([5, 4]); x.strokeStyle = '#b9a48f'; x.lineWidth = 1.5;
+      x.beginPath(); x.moveTo(L, y); x.lineTo(R, y); x.stroke(); x.restore();
+    };
+    let y = top + 26;
+    if (sprite) {
+      const h = 120, w = h * sprite.naturalWidth / sprite.naturalHeight;
+      x.drawImage(sprite, W / 2 - w * 0.59, y, w, h);
+      y += h + 18;
+    }
+    x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.fillStyle = '#2b1d16';
+    x.font = '700 32px "Pixelify Sans", monospace';
+    x.fillText('INCINERATION RECEIPT', W / 2, y + 26); y += 50;
+    x.font = '400 15px "JetBrains Mono", monospace'; x.fillStyle = '#6b5545';
+    x.fillText(`${r.no} · ${r.date}`, W / 2, y); y += 22;
+    dashed(y); y += 36;
+    const rows = [['tokens burned', r.tokens], ['cost', r.cost], ['value created', '$0.00'], ['heat generated', r.heat], ['refunds', 'lol']];
+    for (const [k, v] of rows) {
+      x.fillStyle = '#2b1d16';
+      x.textAlign = 'left'; x.font = '400 17px "JetBrains Mono", monospace'; x.fillText(k, L, y);
+      x.textAlign = 'right'; x.font = '600 17px "JetBrains Mono", monospace'; x.fillText(v, R, y);
+      y += 32;
+    }
+    y -= 14; dashed(y); y += 34;
+    x.textAlign = 'center'; x.font = '600 15px "JetBrains Mono", monospace'; x.fillStyle = '#2b1d16';
+    x.fillText('THANK YOU FOR WASTING WITH US', W / 2, y); y += 26;
+    x.font = '400 13px "JetBrains Mono", monospace'; x.fillStyle = '#8a7464';
+    x.fillText('token incinerator · day 01', W / 2, y);
+    return y;
+  }
+  function renderReceipt(r, withSprite) {
+    const W = 556, S = 2; // paper width 516 = 43 scallops of 12px
+    const sprite = withSprite ? imgs.find((im) => im.dataset.mood === 'happy') : null;
+    const H = Math.ceil(paintReceipt(document.createElement('canvas').getContext('2d'), r, sprite, W, 0)) + 52;
+    const c = document.createElement('canvas');
+    c.width = W * S; c.height = H * S;
+    const x = c.getContext('2d');
+    x.scale(S, S);
+    paintReceipt(x, r, sprite, W, H);
+    return c;
+  }
+  const toBlob = (c) => new Promise((res) => { try { c.toBlob(res, 'image/png'); } catch { res(null); } });
+  $('#rcDownload').addEventListener('click', async (e) => {
+    if (!lastReceipt) return;
+    const btn = e.currentTarget;
+    try {
+      await Promise.all(['700 32px "Pixelify Sans"', '400 17px "JetBrains Mono"', '600 17px "JetBrains Mono"'].map((f) => document.fonts.load(f)));
+    } catch {}
+    // Opened straight from disk (file://) the sprite taints the canvas, so fall back to a sprite-less receipt.
+    let blob = await toBlob(renderReceipt(lastReceipt, true));
+    if (!blob) blob = await toBlob(renderReceipt(lastReceipt, false));
+    if (!blob) { btn.textContent = "couldn't save, sorry"; return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `incineration-receipt-${lastReceipt.no.slice(1)}.png`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    btn.textContent = 'Saved ✓';
+  });
+
+  // ---------- embers ----------
+  function spawn(m, n, power = 1) {
+    if (reduced) n = Math.ceil(n / 3);
+    for (let i = 0; i < n && parts.length < 700; i++) {
+      parts.push({
+        x: m.x + rand(-0.12, 0.12) * m.w, y: m.y + rand(-0.05, 0.08) * m.w,
+        vx: rand(-60, 60) * power, vy: -rand(50, 170) * power,
+        life: 1, decay: rand(0.55, 1.4), s: Math.random() < 0.3 ? 4 : 2,
+      });
+    }
+  }
+  let dpr = 1;
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // ---------- main loop ----------
+  let last = performance.now(), ambient = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const m = mouth();
+
+    for (let i = fliers.length - 1; i >= 0; i--) {
+      const f = fliers[i];
+      const p = (now - f.t0) / f.dur;
+      if (p < 0) continue;
+      if (f.hidden) { f.hidden = false; f.el.style.opacity = ''; }
+      if (p >= 1) { f.el.remove(); fliers.splice(i, 1); eat(f, m); continue; }
+      const e = p * p, u = 1 - e;
+      const cx = (f.sx + m.x) / 2 + f.bend, cy = Math.min(f.sy, m.y) - f.lift;
+      const x = u * u * f.sx + 2 * u * e * cx + e * e * m.x;
+      const y = u * u * f.sy + 2 * u * e * cy + e * e * m.y;
+      f.el.style.transform = `translate(${x - f.w / 2}px,${y - f.h / 2}px) rotate(${f.rot * e}deg) scale(${1 - 0.72 * e * e})`;
+      if (!f.hot && e > 0.4) { f.hot = true; f.el.classList.add('hot'); }
+    }
+
+    heat = Math.max(0, heat - dt * 0.45);
+    ambient += dt * (reduced ? 0.6 : 1.4 + heat * 45);
+    while (ambient >= 1) { spawn(m, 1, 0.55 + heat); ambient -= 1; }
+
+    g.clearRect(0, 0, innerWidth, innerHeight);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const q = parts[i];
+      q.vy -= 30 * dt; q.vx *= 0.985;
+      q.x += q.vx * dt; q.y += q.vy * dt;
+      q.life -= q.decay * dt;
+      if (q.life <= 0) { parts.splice(i, 1); continue; }
+      g.globalAlpha = Math.min(1, q.life * 1.5);
+      g.fillStyle = q.life > 0.65 ? '#ffb020' : q.life > 0.35 ? '#f26a12' : '#a8300f';
+      g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s);
+    }
+    g.globalAlpha = 1;
+
+    glow.style.setProperty('--go', (0.42 + heat * 0.58).toFixed(3));
+    glow.style.setProperty('--gs', (1 + heat * 0.28).toFixed(3));
+
+    if (statsDirty) {
+      statsDirty = false;
+      stTokens.textContent = totals.tokens.toLocaleString();
+      stMoney.textContent = money(totals.tokens * RATE);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---------- boot ----------
+  renderPreview();
+  setTimeout(() => { if (!busy) say(pick(LINES.hello), 3000); }, 700);
+  setInterval(() => {
+    if (!busy && !bubble.classList.contains('show') && !input.value && document.visibilityState === 'visible') say(pick(LINES.idle), 2600);
+  }, 16000);
+})();
+</script>
+</body>
+</html>

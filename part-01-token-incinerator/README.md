@@ -1,4 +1,4 @@
-# Day 01: Token Incinerator
+# Part 01: Token Incinerator
 
 Type anything. It gets chopped into tokens and fed to **Gerald**, a smug cast-iron furnace. You get a receipt. Nothing useful happens.
 

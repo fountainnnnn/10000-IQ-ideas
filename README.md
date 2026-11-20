@@ -6,9 +6,9 @@ Every so often I ship another essential project that the world has been missing.
 
 ## The projects
 
-| Day | Project | What it does |
+| Part | Project | What it does |
 | --- | --- | --- |
-| 01 | [Token Incinerator](day-01-token-incinerator/) | Chops whatever you type into tokens and feeds them to a smug furnace named Gerald. You get a receipt. |
+| 01 | [Token Incinerator](part-01-token-incinerator/) | Chops whatever you type into tokens and feeds them to a smug furnace named Gerald. You get a receipt. |
 
 ## Running a project
 
@@ -17,8 +17,8 @@ Open the project's folder and read its `README.md`. Every project lists its own 
 ## Folder layout
 
 ```
-day-01-<slug>/
-day-02-<slug>/
+part-01-<slug>/
+part-02-<slug>/
 ...
 ```
 
